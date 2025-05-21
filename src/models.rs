@@ -1,5 +1,5 @@
+use crate::schema::{device, house, room};
 use diesel::prelude::*;
-use crate::schema::{house, room, device};
 
 #[derive(Queryable, Selectable, Identifiable)]
 #[diesel(table_name = house)]

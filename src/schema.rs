@@ -28,8 +28,4 @@ diesel::table! {
 diesel::joinable!(device -> room (room));
 diesel::joinable!(room -> house (house));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    device,
-    house,
-    room,
-);
+diesel::allow_tables_to_appear_in_same_query!(device, house, room,);
