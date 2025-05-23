@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 use axum::{
     extract::{Json, Path, State},
@@ -6,7 +6,7 @@ use axum::{
     response::IntoResponse,
 };
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::{
     AppState,
@@ -59,9 +59,7 @@ pub async fn upd_house(
 
     let res = diesel::update(house)
         .filter(id.eq(house_id))
-        .set((
-            name.eq::<String>(form.into()),
-        ))
+        .set((name.eq::<String>(form.into()),))
         .execute(&mut *dbh)
         .expect("cant execute");
 
@@ -117,6 +115,39 @@ pub async fn add_room(
         .expect("cant execute");
 
     Json(res)
+}
+
+pub async fn upd_room(
+    State(app_state): State<Arc<AppState>>,
+    Path(room_id): Path<i32>,
+    Json(form): Json<Title>,
+) -> Json<String> {
+    let mut dbh = app_state.pool.get().expect("cant connect");
+
+    use schema::room::dsl::*;
+
+    let res = diesel::update(room)
+        .filter(id.eq(room_id))
+        .set((name.eq::<String>(form.into()),))
+        .execute(&mut *dbh)
+        .expect("cant execute");
+
+    Json(res.to_string())
+}
+
+pub async fn del_room(
+    State(app_state): State<Arc<AppState>>,
+    Path(room_id): Path<i32>,
+) -> Json<String> {
+    let mut dbh = app_state.pool.get().expect("cant connect");
+
+    use schema::room::dsl::*;
+
+    let res = diesel::delete(room.filter(id.eq(room_id)))
+        .execute(&mut *dbh)
+        .expect("cant execute");
+
+    Json(res.to_string())
 }
 
 pub async fn get_devices(
