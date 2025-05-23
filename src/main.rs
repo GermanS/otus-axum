@@ -2,7 +2,10 @@ mod handlers;
 mod models;
 mod schema;
 
-use axum::{Router, routing::get};
+use axum::{
+    Router,
+    routing::{get, put},
+};
 use diesel::r2d2::{self, ConnectionManager, Pool};
 use std::sync::Arc;
 
@@ -33,6 +36,10 @@ async fn main() {
         .route(
             "/houses/:house_id/rooms/:room_id/devices",
             get(handlers::get_devices).post(handlers::add_device),
+        )
+        .route(
+            "/houses/:house_id/rooms/:room_id/devices/:device_id",
+            put(handlers::upd_device).delete(handlers::del_device),
         )
         .with_state(Arc::clone(&app_state));
 

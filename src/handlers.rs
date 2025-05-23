@@ -68,7 +68,6 @@ pub async fn add_room(
     State(state): State<Arc<AppState>>,
     Path(house_id): Path<i32>,
     Json(title): Json<Title>,
-
 ) -> Json<usize> {
     use schema::room::dsl::*;
 
@@ -124,6 +123,43 @@ pub async fn add_device(
             state: new_device.state,
             device_type: new_device.device,
         })
+        .execute(&mut *dbh)
+        .expect("cant execute");
+
+    Json(res.to_string())
+}
+
+pub async fn upd_device(
+    State(app_state): State<Arc<AppState>>,
+    Path((_house_id, _room_id, device_id)): Path<(i32, i32, i32)>,
+    Json(form): Json<PostRequestDevice>,
+) -> Json<String> {
+    let mut dbh = app_state.pool.get().expect("cant connect");
+
+    use schema::device::dsl::*;
+
+    let res = diesel::update(device)
+        .filter(id.eq(device_id))
+        .set((
+            name.eq(form.name),
+            state.eq(form.state),
+            device_type.eq(form.device),
+        ))
+        .execute(&mut *dbh)
+        .expect("cant execute");
+
+    Json(res.to_string())
+}
+
+pub async fn del_device(
+    State(app_state): State<Arc<AppState>>,
+    Path((_house_id, _room_id, device_id)): Path<(i32, i32, i32)>,
+) -> Json<String> {
+    let mut dbh = app_state.pool.get().expect("cant connect");
+
+    use schema::device::dsl::*;
+
+    let res = diesel::delete(device.filter(id.eq(device_id)))
         .execute(&mut *dbh)
         .expect("cant execute");
 
