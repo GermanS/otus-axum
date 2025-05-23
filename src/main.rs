@@ -30,6 +30,10 @@ async fn main() {
             get(handlers::list_houses).post(handlers::add_house),
         )
         .route(
+            "/houses/:house_id",
+            put(handlers::upd_house).delete(handlers::del_house),
+        )
+        .route(
             "/houses/:house_id/rooms",
             get(handlers::get_rooms).post(handlers::add_room),
         )

@@ -48,6 +48,41 @@ pub async fn add_house(
     (StatusCode::CREATED, Json(()))
 }
 
+pub async fn upd_house(
+    State(app_state): State<Arc<AppState>>,
+    Path(house_id): Path<i32>,
+    Json(form): Json<Title>,
+) -> Json<String> {
+    let mut dbh = app_state.pool.get().expect("cant connect");
+
+    use schema::house::dsl::*;
+
+    let res = diesel::update(house)
+        .filter(id.eq(house_id))
+        .set((
+            name.eq::<String>(form.into()),
+        ))
+        .execute(&mut *dbh)
+        .expect("cant execute");
+
+    Json(res.to_string())
+}
+
+pub async fn del_house(
+    State(app_state): State<Arc<AppState>>,
+    Path(house_id): Path<i32>,
+) -> Json<String> {
+    let mut dbh = app_state.pool.get().expect("cant connect");
+
+    use schema::house::dsl::*;
+
+    let res = diesel::delete(house.filter(id.eq(house_id)))
+        .execute(&mut *dbh)
+        .expect("cant execute");
+
+    Json(res.to_string())
+}
+
 pub async fn get_rooms(
     State(state): State<Arc<AppState>>,
     Path(house_id): Path<i32>,
