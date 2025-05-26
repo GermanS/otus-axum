@@ -1,26 +1,12 @@
 #[cfg(test)]
 mod crud {
-    use axum::http::response;
-    use otus_axum::models::{Device, House, Room};
+    use otus_axum::{
+        handlers::PostRequestDevice,
+        models::{Device, House, Room},
+    };
     use std::collections::HashMap;
 
     static HTTP_HOST: &str = "http://localhost:3000";
-
-    #[tokio::test]
-    async fn add_a_house() {
-        set_up().await;
-
-        new_house().await;
-    }
-
-    #[tokio::test]
-    async fn add_room() {
-        set_up().await;
-
-        let house = new_house().await;
-
-        new_room(house).await;
-    }
 
     #[tokio::test]
     async fn add_device() {
@@ -42,8 +28,10 @@ mod crud {
     }
 
     async fn new_house() -> House {
+        let name = "la casa de mi primо";
+
         let mut data = HashMap::new();
-        data.insert("name", "la casa de mi primо");
+        data.insert("name", name);
 
         let client = reqwest::Client::new();
         let response = client
@@ -58,12 +46,17 @@ mod crud {
         let result = response.json::<House>().await;
         assert!(result.is_ok());
 
-        result.unwrap()
+        let house = result.unwrap();
+
+        assert_eq!(&house.name, name);
+
+        house
     }
 
     async fn new_room(house: House) -> Room {
+        let name = "cocina";
         let mut data = HashMap::new();
-        data.insert("name", "cocina");
+        data.insert("name", name);
 
         let client = reqwest::Client::new();
         let response = client
@@ -77,30 +70,40 @@ mod crud {
         assert!(response.status().is_success());
 
         let result = response.json::<Room>().await;
-        println!("{:?}", result);
-
         assert!(result.is_ok());
 
-        result.unwrap()
+        let room = result.unwrap();
+
+        assert_eq!(&room.name, name);
+
+        room
     }
 
     async fn new_device(room: Room) -> Device {
-        let mut data = HashMap::new();
-        data.insert("name", "cocina");
+        let name = "temperatura en el refrigorico";
+        let data = PostRequestDevice {
+            name: name.into(),
+            state: false,
+            device: "termometro".into(),
+        };
+
+        let url = format!(
+            "{}/houses/{}/rooms/{}/devices",
+            HTTP_HOST, room.house, room.id
+        );
 
         let client = reqwest::Client::new();
-        let response = client
-            .post(format!("{}/{}/room/{}", HTTP_HOST, room.house, room.id))
-            .json(&data)
-            .send()
-            .await
-            .unwrap();
+        let response = client.post(url).json(&data).send().await.unwrap();
 
         assert!(response.status().is_success());
 
         let result = response.json::<Device>().await;
         assert!(result.is_ok());
 
-        result.unwrap()
+        let room = result.unwrap();
+
+        assert_eq!(&room.name, name);
+
+        room
     }
 }

@@ -144,20 +144,29 @@ pub async fn add_room(
 
 pub async fn upd_room(
     State(app_state): State<Arc<AppState>>,
-    Path(room_id): Path<i32>,
+    Path((house_id, room_id)): Path<(i32, i32)>,
     Json(room_form): Json<RoomForm>,
-) -> Result<Json<String>, (StatusCode, String)> {
+) -> Result<Json<Room>, (StatusCode, String)> {
     let mut dbh = app_state.pool.get().map_err(internal_error)?;
+
+    let room_name = room_form.name;
 
     use schema::room::dsl::*;
 
-    let res = diesel::update(room)
+    let _ = diesel::update(room)
         .filter(id.eq(room_id))
-        .set(name.eq(room_form.name))
+        .set(name.eq(room_name.to_owned()))
         .execute(&mut *dbh)
         .map_err(internal_error)?;
 
-    Ok(Json(res.to_string()))
+    let res = room
+        .filter(house.eq(house_id))
+        .filter(name.eq(room_name.to_owned()))
+        .select(Room::as_select())
+        .first(&mut dbh)
+        .map_err(internal_error)?;
+
+    Ok(Json(res))
 }
 
 pub async fn del_room(
@@ -191,68 +200,90 @@ pub async fn get_devices(
     Ok(Json(res))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize, Debug)]
 pub struct PostRequestDevice {
-    name: String,
-    state: bool,
-    device: String,
+    pub name: String,
+    pub state: bool,
+    pub device: String,
 }
 
 pub async fn add_device(
     State(app_state): State<Arc<AppState>>,
     Path((_house_id, room_id)): Path<(i32, i32)>,
     Json(new_device): Json<PostRequestDevice>,
-) -> Result<Json<String>, (StatusCode, String)> {
+) -> Result<Json<Device>, (StatusCode, String)> {
     let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::device::dsl::*;
 
-    let res = diesel::insert_into(device)
+    println!("{:?}", &new_device);
+
+    let dev_name = new_device.name;
+
+    let _ = diesel::insert_into(device)
         .values(&NewDevice {
             room: room_id,
-            name: new_device.name,
-            state: new_device.state,
+            name: dev_name.to_owned(),
+            //state: new_device.state,
+            state: false,
             device_type: new_device.device,
         })
         .execute(&mut *dbh)
         .map_err(internal_error)?;
 
-    Ok(Json(res.to_string()))
+    let res = device
+        .filter(room.eq(room_id))
+        .filter(name.eq(dev_name.to_owned()))
+        .select(Device::as_select())
+        .first(&mut dbh)
+        .map_err(internal_error)?;
+
+    Ok(Json(res))
 }
 
 pub async fn upd_device(
     State(app_state): State<Arc<AppState>>,
-    Path((_house_id, _room_id, device_id)): Path<(i32, i32, i32)>,
+    Path((_house_id, room_id, device_id)): Path<(i32, i32, i32)>,
     Json(form): Json<PostRequestDevice>,
-) -> Result<Json<String>, (StatusCode, String)> {
+) -> Result<Json<Device>, (StatusCode, String)> {
     let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::device::dsl::*;
 
-    let res = diesel::update(device)
+    let dev_name = form.name;
+
+    let _ = diesel::update(device)
         .filter(id.eq(device_id))
+        .filter(room.eq(room_id))
         .set((
-            name.eq(form.name),
-            state.eq(form.state),
+            name.eq(dev_name.to_owned()),
+            //            state.eq(form.state),
             device_type.eq(form.device),
         ))
         .execute(&mut *dbh)
         .map_err(internal_error)?;
 
-    Ok(Json(res.to_string()))
+    let res = device
+        .filter(id.eq(device_id))
+        .filter(room.eq(room_id))
+        .filter(name.eq(dev_name.to_owned()))
+        .select(Device::as_select())
+        .first(&mut dbh)
+        .map_err(internal_error)?;
+
+    Ok(Json(res))
 }
 
 pub async fn del_device(
     State(app_state): State<Arc<AppState>>,
-    Path((_house_id, _room_id, device_id)): Path<(i32, i32, i32)>,
+    Path((_house_id, room_id, device_id)): Path<(i32, i32, i32)>,
 ) -> Result<Json<String>, (StatusCode, String)> {
     let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::device::dsl::*;
 
-    let res = diesel::delete(device.filter(id.eq(device_id)))
+    let res = diesel::delete(device.filter(id.eq(device_id)).filter(room.eq(room_id)))
         .execute(&mut *dbh)
-        //.expect("cant execute");
         .map_err(internal_error)?;
 
     Ok(Json(res.to_string()))
