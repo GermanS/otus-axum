@@ -5,13 +5,13 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use serde::Deserialize;
 
 use crate::{
     AppState,
     models::{Device, House, NewDevice, NewHouse, NewRoom, Room},
-    schema::{self},
+    schema::{self, house::name},
 };
 
 #[derive(Deserialize, Debug)]
@@ -37,96 +37,117 @@ pub async fn list_houses(State(state): State<Arc<AppState>>) -> impl IntoRespons
 pub async fn add_house(
     State(state): State<Arc<AppState>>,
     Json(house_form): Json<HouseForm>,
-) -> impl IntoResponse {
+) -> Result<Json<House>, (StatusCode, String)> {
     use crate::schema::house::dsl::house;
 
-    let mut dbh = state.pool.get().expect("cant connect");
+    let mut dbh = state.pool.get().map_err(internal_error)?;
 
-    let _res = diesel::insert_into(house)
+    let _ = diesel::insert_into(house)
         .values(NewHouse {
-            name: house_form.name,
+            name: house_form.name.clone(),
         })
         .execute(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    (StatusCode::CREATED, Json(_res))
+    let res = house
+        .filter(name.eq(house_form.name))
+        .select(House::as_select())
+        .first(&mut dbh)
+        .map_err(internal_error)?;
+
+    Ok(Json(res))
 }
 
 pub async fn upd_house(
     State(app_state): State<Arc<AppState>>,
     Path(house_id): Path<i32>,
     Json(house_form): Json<HouseForm>,
-) -> Json<String> {
-    let mut dbh = app_state.pool.get().expect("cant connect");
+) -> Result<Json<House>, (StatusCode, String)> {
+    let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::house::dsl::*;
 
-    let res = diesel::update(house)
+    let _ = diesel::update(house)
         .filter(id.eq(house_id))
         .set(name.eq::<String>(house_form.name))
         .execute(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res.to_string())
+    let res = house
+        .filter(id.eq(house_id))
+        .select(House::as_select())
+        .first(&mut dbh)
+        .map_err(internal_error)?;
+
+    Ok(Json(res))
 }
 
 pub async fn del_house(
     State(app_state): State<Arc<AppState>>,
     Path(house_id): Path<i32>,
-) -> Json<String> {
-    let mut dbh = app_state.pool.get().expect("cant connect");
+) -> Result<Json<String>, (StatusCode, String)> {
+    let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::house::dsl::*;
 
     let res = diesel::delete(house.filter(id.eq(house_id)))
         .execute(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res.to_string())
+    Ok(Json(res.to_string()))
 }
 
 pub async fn get_rooms(
     State(state): State<Arc<AppState>>,
     Path(house_id): Path<i32>,
-) -> Json<Vec<Room>> {
+) -> Result<Json<Vec<Room>>, (StatusCode, String)> {
     use crate::schema::room::dsl::*;
 
-    let mut dbh = state.pool.get().expect("cant connect");
+    let mut dbh = state.pool.get().map_err(internal_error)?;
 
     let res = room
         .filter(house.eq(house_id))
         .load::<Room>(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res)
+    Ok(Json(res))
 }
 
 pub async fn add_room(
     State(state): State<Arc<AppState>>,
     Path(house_id): Path<i32>,
     Json(room_form): Json<RoomForm>,
-) -> Json<usize> {
+) -> Result<Json<Room>, (StatusCode, String)> {
     use schema::room::dsl::*;
 
-    let mut dbh = state.pool.get().expect("cant connect");
+    let mut dbh = state.pool.get().map_err(internal_error)?;
 
-    let res = diesel::insert_into(room)
+    let room_name = room_form.name;
+
+    let _ = diesel::insert_into(room)
         .values(&NewRoom {
             house: house_id,
-            name: room_form.name,
+            name: room_name.to_owned(),
         })
         .execute(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res)
+    let res = room
+        .filter(house.eq(house_id))
+        .filter(name.eq(room_name.to_owned()))
+        .select(Room::as_select())
+        .first(&mut dbh)
+        .map_err(internal_error)?;
+
+    Ok(Json(res))
 }
 
 pub async fn upd_room(
     State(app_state): State<Arc<AppState>>,
     Path(room_id): Path<i32>,
     Json(room_form): Json<RoomForm>,
-) -> Json<String> {
-    let mut dbh = app_state.pool.get().expect("cant connect");
+) -> Result<Json<String>, (StatusCode, String)> {
+    let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::room::dsl::*;
 
@@ -134,40 +155,40 @@ pub async fn upd_room(
         .filter(id.eq(room_id))
         .set(name.eq(room_form.name))
         .execute(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res.to_string())
+    Ok(Json(res.to_string()))
 }
 
 pub async fn del_room(
     State(app_state): State<Arc<AppState>>,
     Path(room_id): Path<i32>,
-) -> Json<String> {
-    let mut dbh = app_state.pool.get().expect("cant connect");
+) -> Result<Json<String>, (StatusCode, String)> {
+    let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::room::dsl::*;
 
     let res = diesel::delete(room.filter(id.eq(room_id)))
         .execute(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res.to_string())
+    Ok(Json(res.to_string()))
 }
 
 pub async fn get_devices(
     State(app_state): State<Arc<AppState>>,
     Path((_house_id, room_id)): Path<(i32, i32)>,
-) -> Json<Vec<Device>> {
-    let mut dbh = app_state.pool.get().expect("cant connect");
+) -> Result<Json<Vec<Device>>, (StatusCode, String)> {
+    let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::device::dsl::*;
 
     let res = device
         .filter(room.eq(room_id))
         .load::<Device>(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res)
+    Ok(Json(res))
 }
 
 #[derive(Deserialize)]
@@ -181,8 +202,8 @@ pub async fn add_device(
     State(app_state): State<Arc<AppState>>,
     Path((_house_id, room_id)): Path<(i32, i32)>,
     Json(new_device): Json<PostRequestDevice>,
-) -> Json<String> {
-    let mut dbh = app_state.pool.get().expect("cant connect");
+) -> Result<Json<String>, (StatusCode, String)> {
+    let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::device::dsl::*;
 
@@ -194,17 +215,17 @@ pub async fn add_device(
             device_type: new_device.device,
         })
         .execute(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res.to_string())
+    Ok(Json(res.to_string()))
 }
 
 pub async fn upd_device(
     State(app_state): State<Arc<AppState>>,
     Path((_house_id, _room_id, device_id)): Path<(i32, i32, i32)>,
     Json(form): Json<PostRequestDevice>,
-) -> Json<String> {
-    let mut dbh = app_state.pool.get().expect("cant connect");
+) -> Result<Json<String>, (StatusCode, String)> {
+    let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::device::dsl::*;
 
@@ -216,22 +237,62 @@ pub async fn upd_device(
             device_type.eq(form.device),
         ))
         .execute(&mut *dbh)
-        .expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res.to_string())
+    Ok(Json(res.to_string()))
 }
 
 pub async fn del_device(
     State(app_state): State<Arc<AppState>>,
     Path((_house_id, _room_id, device_id)): Path<(i32, i32, i32)>,
-) -> Json<String> {
-    let mut dbh = app_state.pool.get().expect("cant connect");
+) -> Result<Json<String>, (StatusCode, String)> {
+    let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
     use schema::device::dsl::*;
 
     let res = diesel::delete(device.filter(id.eq(device_id)))
         .execute(&mut *dbh)
-        .expect("cant execute");
+        //.expect("cant execute");
+        .map_err(internal_error)?;
 
-    Json(res.to_string())
+    Ok(Json(res.to_string()))
+}
+
+pub async fn drop_all(
+    State(app_state): State<Arc<AppState>>,
+) -> Result<Json<bool>, (StatusCode, String)> {
+    let mut dbh = app_state.pool.get().map_err(internal_error)?;
+
+    {
+        use schema::device::dsl::*;
+
+        let _ = diesel::delete(device)
+            .execute(&mut *dbh)
+            //.expect("cant execute");
+            .map_err(internal_error)?;
+    }
+    {
+        use schema::room::dsl::*;
+
+        let _ = diesel::delete(room)
+            .execute(&mut *dbh)
+            .map_err(internal_error)?;
+    }
+
+    {
+        use schema::house::dsl::*;
+
+        let _ = diesel::delete(house)
+            .execute(&mut *dbh)
+            .map_err(internal_error)?;
+    }
+
+    Ok(Json(true))
+}
+
+fn internal_error<E>(error: E) -> (StatusCode, String)
+where
+    E: std::error::Error,
+{
+    (StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
 }

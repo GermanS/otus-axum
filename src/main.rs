@@ -1,19 +1,10 @@
-mod handlers;
-mod models;
-mod schema;
-
 use axum::{
     Router,
     routing::{get, put},
 };
-use diesel::r2d2::{self, ConnectionManager, Pool};
+use diesel::r2d2::{self, ConnectionManager};
+use otus_axum::{AppState, handlers};
 use std::sync::Arc;
-
-type DbPool = Pool<ConnectionManager<diesel::SqliteConnection>>;
-
-struct AppState {
-    pool: DbPool,
-}
 
 #[tokio::main]
 async fn main() {
@@ -27,7 +18,9 @@ async fn main() {
     let app = Router::new()
         .route(
             "/house",
-            get(handlers::list_houses).post(handlers::add_house),
+            get(handlers::list_houses)
+                .post(handlers::add_house)
+                .delete(handlers::drop_all),
         )
         .route(
             "/houses/{house_id}",
