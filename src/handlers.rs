@@ -216,8 +216,6 @@ pub async fn add_device(
 
     use schema::device::dsl::*;
 
-    println!("{:?}", &new_device);
-
     let dev_name = new_device.name;
 
     let _ = diesel::insert_into(device)
@@ -257,7 +255,7 @@ pub async fn upd_device(
         .filter(room.eq(room_id))
         .set((
             name.eq(dev_name.to_owned()),
-            //            state.eq(form.state),
+            state.eq(form.state),
             device_type.eq(form.device),
         ))
         .execute(&mut *dbh)

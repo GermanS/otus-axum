@@ -12,8 +12,11 @@ mod crud {
     async fn add_and_update_ops() {
         set_up().await;
 
-        new_device(upd_the_room(new_room(upd_the_house(new_house().await).await).await).await)
-            .await;
+        upd_the_device(
+            new_device(upd_the_room(new_room(upd_the_house(new_house().await).await).await).await)
+                .await,
+        )
+        .await;
     }
 
     async fn set_up() {
@@ -69,8 +72,6 @@ mod crud {
             .send()
             .await
             .unwrap();
-
-        println!("{:?}", response);
 
         assert!(response.status().is_success());
 
@@ -129,8 +130,6 @@ mod crud {
             .await
             .unwrap();
 
-        println!("{:?}", response);
-
         assert!(response.status().is_success());
 
         let result = response.json::<Room>().await;
@@ -164,10 +163,40 @@ mod crud {
         let result = response.json::<Device>().await;
         assert!(result.is_ok());
 
-        let room = result.unwrap();
+        let device = result.unwrap();
 
-        assert_eq!(&room.name, name);
+        assert_eq!(&device.name, name);
 
-        room
+        device
+    }
+
+    async fn upd_the_device(device: Device) -> Device {
+        let renamed = PostRequestDevice {
+            name: "hello world".into(),
+            state: true,
+            device: "socket".into(),
+        };
+
+        let client = reqwest::Client::new();
+        let response = client
+            .put(format!(
+                "{}/houses/1/rooms/{}/devices/{}",
+                HTTP_HOST, device.room, device.id
+            ))
+            .json(&renamed)
+            .send()
+            .await
+            .unwrap();
+
+        assert!(response.status().is_success());
+
+        let result = response.json::<Device>().await;
+        assert!(result.is_ok());
+
+        let device = result.unwrap();
+
+        assert_eq!(device.name, renamed.name);
+
+        device
     }
 }
