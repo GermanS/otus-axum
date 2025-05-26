@@ -1,7 +1,7 @@
 use crate::schema::{device, house, room};
 use diesel::prelude::*;
 
-#[derive(serde::Serialize, serde::Deserialize, Queryable, Selectable, Identifiable)]
+#[derive(serde::Serialize, serde::Deserialize, Queryable, Selectable, Identifiable, Debug)]
 #[diesel(table_name = house)]
 #[diesel(primary_key(id))]
 pub struct House {
@@ -35,7 +35,7 @@ pub struct NewRoom {
 }
 
 #[derive(
-    serde::Serialize, serde::Deserialize, Queryable, Selectable, Identifiable, Associations,
+    serde::Serialize, serde::Deserialize, Queryable, Selectable, Identifiable, Associations, Debug,
 )]
 #[diesel(table_name = device)]
 #[diesel(primary_key(id))]
