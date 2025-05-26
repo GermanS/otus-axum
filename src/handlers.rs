@@ -11,17 +11,19 @@ use serde::Deserialize;
 use crate::{
     AppState,
     models::{Device, House, NewDevice, NewHouse, NewRoom, Room},
-    schema,
+    schema::{self},
 };
 
-#[derive(Deserialize)]
-pub struct Title(String);
-
-impl From<Title> for String {
-    fn from(value: Title) -> Self {
-        value.0
-    }
+#[derive(Deserialize, Debug)]
+pub struct HouseForm {
+    name: String,
 }
+
+#[derive(Deserialize, Debug)]
+pub struct RoomForm {
+    name: String,
+}
+
 pub async fn list_houses(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     use schema::house::dsl::*;
 
@@ -34,24 +36,26 @@ pub async fn list_houses(State(state): State<Arc<AppState>>) -> impl IntoRespons
 
 pub async fn add_house(
     State(state): State<Arc<AppState>>,
-    Json(title): Json<Title>,
+    Json(house_form): Json<HouseForm>,
 ) -> impl IntoResponse {
     use crate::schema::house::dsl::house;
 
     let mut dbh = state.pool.get().expect("cant connect");
 
-    let res = diesel::insert_into(house)
-        .values(NewHouse { name: title.into() })
+    let _res = diesel::insert_into(house)
+        .values(NewHouse {
+            name: house_form.name,
+        })
         .execute(&mut *dbh)
         .expect("cant execute");
 
-    (StatusCode::CREATED, Json(()))
+    (StatusCode::CREATED, Json(_res))
 }
 
 pub async fn upd_house(
     State(app_state): State<Arc<AppState>>,
     Path(house_id): Path<i32>,
-    Json(form): Json<Title>,
+    Json(house_form): Json<HouseForm>,
 ) -> Json<String> {
     let mut dbh = app_state.pool.get().expect("cant connect");
 
@@ -59,7 +63,7 @@ pub async fn upd_house(
 
     let res = diesel::update(house)
         .filter(id.eq(house_id))
-        .set((name.eq::<String>(form.into()),))
+        .set(name.eq::<String>(house_form.name))
         .execute(&mut *dbh)
         .expect("cant execute");
 
@@ -100,7 +104,7 @@ pub async fn get_rooms(
 pub async fn add_room(
     State(state): State<Arc<AppState>>,
     Path(house_id): Path<i32>,
-    Json(title): Json<Title>,
+    Json(room_form): Json<RoomForm>,
 ) -> Json<usize> {
     use schema::room::dsl::*;
 
@@ -109,7 +113,7 @@ pub async fn add_room(
     let res = diesel::insert_into(room)
         .values(&NewRoom {
             house: house_id,
-            name: title.into(),
+            name: room_form.name,
         })
         .execute(&mut *dbh)
         .expect("cant execute");
@@ -120,7 +124,7 @@ pub async fn add_room(
 pub async fn upd_room(
     State(app_state): State<Arc<AppState>>,
     Path(room_id): Path<i32>,
-    Json(form): Json<Title>,
+    Json(room_form): Json<RoomForm>,
 ) -> Json<String> {
     let mut dbh = app_state.pool.get().expect("cant connect");
 
@@ -128,7 +132,7 @@ pub async fn upd_room(
 
     let res = diesel::update(room)
         .filter(id.eq(room_id))
-        .set((name.eq::<String>(form.into()),))
+        .set(name.eq(room_form.name))
         .execute(&mut *dbh)
         .expect("cant execute");
 

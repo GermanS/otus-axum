@@ -30,23 +30,23 @@ async fn main() {
             get(handlers::list_houses).post(handlers::add_house),
         )
         .route(
-            "/houses/:house_id",
+            "/houses/{house_id}",
             put(handlers::upd_house).delete(handlers::del_house),
         )
         .route(
-            "/houses/:house_id/rooms",
+            "/houses/{house_id}/rooms",
             get(handlers::get_rooms).post(handlers::add_room),
         )
         .route(
-            "/houses/:house_id/rooms",
+            "/houses/{house_id}/rooms/{room_id}",
             put(handlers::upd_room).delete(handlers::del_room),
         )
         .route(
-            "/houses/:house_id/rooms/:room_id/devices",
+            "/houses/{house_id}/rooms/{room_id}/devices",
             get(handlers::get_devices).post(handlers::add_device),
         )
         .route(
-            "/houses/:house_id/rooms/:room_id/devices/:device_id",
+            "/houses/{house_id}/rooms/{room_id}/devices/{device_id}",
             put(handlers::upd_device).delete(handlers::del_device),
         )
         .with_state(Arc::clone(&app_state));
