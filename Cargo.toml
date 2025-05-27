@@ -14,3 +14,10 @@ reqwest = {version = "0.12", features = ["json"]}
 
 diesel = { version = "2.2.0", features = ["sqlite", "r2d2" ] }
 diesel_migrations =  { version = "2.2.0", features = ["sqlite"] }
+
+[[bin]]
+name = "server"
+path = "src/main.rs"
+
+[[example]]
+name = "requests"

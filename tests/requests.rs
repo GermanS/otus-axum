@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod crud {
     use otus_axum::{
-        handlers::PostRequestDevice,
+        handlers::DeviceForm,
         models::{Device, House, Room},
     };
     use std::collections::HashMap;
@@ -144,7 +144,7 @@ mod crud {
 
     async fn new_device(room: Room) -> Device {
         let name = "temperatura en el refrigorico";
-        let data = PostRequestDevice {
+        let data = DeviceForm {
             name: name.into(),
             state: false,
             device: "termometro".into(),
@@ -171,7 +171,7 @@ mod crud {
     }
 
     async fn upd_the_device(device: Device) -> Device {
-        let renamed = PostRequestDevice {
+        let renamed = DeviceForm {
             name: "hello world".into(),
             state: true,
             device: "socket".into(),

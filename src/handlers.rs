@@ -24,6 +24,13 @@ pub struct RoomForm {
     name: String,
 }
 
+#[derive(Deserialize, serde::Serialize, Debug)]
+pub struct DeviceForm {
+    pub name: String,
+    pub state: bool,
+    pub device: String,
+}
+
 pub async fn list_houses(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     use schema::house::dsl::*;
 
@@ -200,17 +207,10 @@ pub async fn get_devices(
     Ok(Json(res))
 }
 
-#[derive(Deserialize, serde::Serialize, Debug)]
-pub struct PostRequestDevice {
-    pub name: String,
-    pub state: bool,
-    pub device: String,
-}
-
 pub async fn add_device(
     State(app_state): State<Arc<AppState>>,
     Path((_house_id, room_id)): Path<(i32, i32)>,
-    Json(new_device): Json<PostRequestDevice>,
+    Json(new_device): Json<DeviceForm>,
 ) -> Result<Json<Device>, (StatusCode, String)> {
     let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
@@ -242,7 +242,7 @@ pub async fn add_device(
 pub async fn upd_device(
     State(app_state): State<Arc<AppState>>,
     Path((_house_id, room_id, device_id)): Path<(i32, i32, i32)>,
-    Json(form): Json<PostRequestDevice>,
+    Json(form): Json<DeviceForm>,
 ) -> Result<Json<Device>, (StatusCode, String)> {
     let mut dbh = app_state.pool.get().map_err(internal_error)?;
 
